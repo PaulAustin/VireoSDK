@@ -24,10 +24,10 @@ _PROGMEM Instruction0 ExecutionContext::_culDeSac;
 InstructionFunction ExecutionContext::_culDeSacFunction;
 
 #ifdef VIVM_SINGLE_EXECUTION_CONTEXT
-QueueElt*       ExecutionContext::_triggeredIsrList;               // Elts waiting for something external to wake them up
+VIClump*        ExecutionContext::_triggeredIsrList;               // Elts waiting for something external to wake them up
 Queue           ExecutionContext::_runQueue;				// Elts ready To run
-QueueElt*       ExecutionContext::_sleepingList;			// Elts waiting for something external to wake them up
-QueueElt*       ExecutionContext::_runningQueueElt;		// Elt actually running
+VIClump*        ExecutionContext::_sleepingList;			// Elts waiting for something external to wake them up
+VIClump*        ExecutionContext::_runningQueueElt;		// Elt actually running
 uIntFastSmall   ExecutionContext::_breakoutCount;
 #endif
 
@@ -132,7 +132,7 @@ VIREO_FUNCTION_SIGNATURE1(WaitUntilMicroseconds, Int64)
     return THREAD_EXEC()->WaitUntilTickCount(PlatformTime::MicrosecondsToTickCount(_Param(0)), _NextInstruction());
 }
 //------------------------------------------------------------
-InstructionCore* ExecutionContext::WaitUntilTickCount(Int64 count, InstructionCore* nextInClump)
+InstructionCore* ExecutionContext::WaitUntilTickCount(PlatformTickType count, InstructionCore* nextInClump)
 {
 	VIClump* current = _runningQueueElt;
 	InstructionCore* next = SuspendRunningQueueElt(nextInClump);
@@ -337,13 +337,13 @@ ExecutionState ExecutionContext::ExecuteSlices(Int32 numSlices)
 
 	return reply;
 }
-
+//------------------------------------------------------------
 void ExecutionContext::EnqueueRunQueue(VIClump* elt)
 {
 	VIREO_ASSERT((0 == elt->_shortCount))
 	_runQueue.Enqueue(elt);
 }
-
+//------------------------------------------------------------
 #ifdef VIVM_SUPPORTS_ISR
 // Interrupts should already be disabled when this is called
 // so there is no need to add guards inside.
@@ -359,9 +359,7 @@ void ExecutionContext::IsrEnqueue(QueueElt* elt)
     }
 }
 #endif
-
-// ??? not safe for UInt32 rollover ( the 39.7 day rollover problem)
-// CheckOccurrences
+//------------------------------------------------------------
 void ExecutionContext::CheckOccurrences(PlatformTickType t)
 {
 	VIClump* pClump;
@@ -401,11 +399,6 @@ void ExecutionContext::CheckOccurrences(PlatformTickType t)
         VIREO_ISR_ENABLE
     }    
 #endif
-    
-// ??? if msCount is less than last one then wrap around has happened
-// go through list,
-// each go through each waiting element.
-// decrement count by delta, if less than zero then enqueue.
 }
 
 DEFINE_VIREO_BEGIN(LabVIEW_Execution1)
