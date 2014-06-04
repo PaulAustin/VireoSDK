@@ -141,8 +141,22 @@ InstructionCore* ExecutionContext::WaitUntilTickCount(PlatformTickType count, In
 	VIREO_ASSERT( (current->_shortCount == 0) )
 
 	current->_wakeUpInfo =  count;
-	current->_next = _sleepingList;
-	_sleepingList = current;
+    
+    if (_sleepingList == null) {
+        // No list, now there is one.
+        current->_next = null;
+        _sleepingList = current;
+    } else {
+        // Insert before elements that will happen later.
+        VIClump** pFix = &_sleepingList;
+        VIClump* node = *pFix;
+        while (node && (count < node->_wakeUpInfo )) {
+            pFix = &(node->_next);
+            node = *pFix;
+        }
+        current->_next = node;
+        *pFix = current;
+    }
     return next;
 }
 //------------------------------------------------------------
@@ -276,7 +290,7 @@ InstructionCore* ExecutionContext::SuspendRunningQueueElt(InstructionCore* nextI
     }
 }
 //------------------------------------------------------------
-ExecutionState ExecutionContext::ExecuteSlices(Int32 numSlices)
+ExecutionState ExecutionContext::ExecuteSlices(Int32 numSlices, PlatformTickType tickCount)
 {
     ExecutionContextScope scope(this);
     
